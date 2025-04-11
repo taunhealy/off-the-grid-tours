@@ -1,0 +1,273 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User accounts (customers, guides, admins)
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  password          String    // Hashed password
+  role              UserRole  @default(CUSTOMER)
+  phone             String?
+  address           String?
+  emergencyContact  String?
+  drivingLicense    String?   // License number
+  licenseExpiry     DateTime?
+  experienceLevel   ExperienceLevel?
+  profileImage      String?   // URL to image
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  bookings          Booking[]
+  reviews           Review[]
+  guidedTours       Tour[]    @relation("TourGuide")
+}
+
+enum UserRole {
+  CUSTOMER
+  GUIDE
+  ADMIN
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+// Motorcycle inventory
+model Motorcycle {
+  id              String    @id @default(cuid())
+  make            String
+  model           String
+  year            Int
+  engineSize      Int       // in cc
+  type            BikeType
+  description     String?   @db.Text
+  dailyRate       Decimal   @db.Decimal(10, 2)
+  images          String[]  // Array of image URLs
+  available       Boolean   @default(true)
+  maintenanceDate DateTime?
+  features        String[]  // Array of features
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bookings        BookingMotorcycle[]
+  tourMotorcycles TourMotorcycle[]
+}
+
+enum BikeType {
+  ADVENTURE
+  CRUISER
+  SPORT
+  TOURING
+  DUAL_SPORT
+  OFF_ROAD
+}
+
+// Tours offered
+model Tour {
+  id              String    @id @default(cuid())
+  name            String
+  description     String    @db.Text
+  difficulty      DifficultyLevel
+  duration        Int       // in days
+  distance        Int       // in kilometers
+  startLocation   String
+  endLocation     String
+  route           Json?     // GeoJSON for route
+  highlights      String[]
+  inclusions      String[]
+  exclusions      String[]
+  maxParticipants Int
+  basePrice       Decimal   @db.Money
+  images          String[]  // Array of image URLs
+  published       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  guideId         String?
+  guide           User?     @relation("TourGuide", fields: [guideId], references: [id])
+  schedules       TourSchedule[]
+  motorcycles     TourMotorcycle[]
+  accommodations  TourAccommodation[]
+}
+
+enum DifficultyLevel {
+  EASY
+  MODERATE
+  CHALLENGING
+  EXTREME
+}
+
+// Available tour dates
+model TourSchedule {
+  id              String    @id @default(cuid())
+  tourId          String
+  tour            Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  startDate       DateTime
+  endDate         DateTime
+  price           Decimal   @db.Decimal(10, 2)
+  availableSpots  Int
+  status          ScheduleStatus @default(OPEN)
+  weatherForecast Json?     // Weather data
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bookings        Booking[]
+}
+
+enum ScheduleStatus {
+  OPEN
+  FULL
+  CANCELLED
+  COMPLETED
+}
+
+// Motorcycles available for specific tours
+model TourMotorcycle {
+  id            String     @id @default(cuid())
+  tourId        String
+  tour          Tour       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  motorcycleId  String
+  motorcycle    Motorcycle @relation(fields: [motorcycleId], references: [id])
+  quantity      Int
+  surcharge     Decimal?   @db.Decimal(10, 2)
+}
+
+// Accommodations during tours
+model TourAccommodation {
+  id            String     @id @default(cuid())
+  tourId        String
+  tour          Tour       @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  name          String
+  location      String
+  description   String?    @db.Text
+  nightNumber   Int        // Which night of the tour
+  type          AccommodationType
+  amenities     String[]
+  images        String[]
+}
+
+enum AccommodationType {
+  HOTEL
+  LODGE
+  CAMPING
+  GUESTHOUSE
+  RESORT
+}
+
+// Customer bookings
+model Booking {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id])
+  tourScheduleId    String
+  tourSchedule      TourSchedule      @relation(fields: [tourScheduleId], references: [id])
+  bookingDate       DateTime          @default(now())
+  status            BookingStatus     @default(PENDING)
+  totalAmount       Decimal           @db.Decimal(10, 2)
+  paidAmount        Decimal           @db.Decimal(10, 2) @default(0)
+  participants      Int
+  specialRequests   String?           @db.Text
+  insuranceOption   Boolean           @default(false)
+  equipmentRentals  EquipmentRental[]
+  motorcycles       BookingMotorcycle[]
+  payments          Payment[]
+  review            Review?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+// Motorcycles assigned to bookings
+model BookingMotorcycle {
+  id            String     @id @default(cuid())
+  bookingId     String
+  booking       Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  motorcycleId  String
+  motorcycle    Motorcycle @relation(fields: [motorcycleId], references: [id])
+  assignedTo    String?    // Name of rider
+}
+
+// Equipment rentals
+model EquipmentRental {
+  id            String     @id @default(cuid())
+  bookingId     String
+  booking       Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  equipmentType EquipmentType
+  quantity      Int
+  pricePerDay   Decimal    @db.Decimal(10, 2)
+}
+
+enum EquipmentType {
+  HELMET
+  JACKET
+  GLOVES
+  BOOTS
+  GPS
+  LUGGAGE
+  CAMERA
+  COMMUNICATION
+}
+
+// Payment records
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentDate   DateTime      @default(now())
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  notes         String?
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  PAYPAL
+  CASH
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// Customer reviews
+model Review {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  bookingId     String     @unique
+  booking       Booking    @relation(fields: [bookingId], references: [id])
+  rating        Int        // 1-5 stars
+  comment       String?    @db.Text
+  tourHighlight String?
+  photos        String[]   // URLs to photos
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  published     Boolean    @default(false)
+}
