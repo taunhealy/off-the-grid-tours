@@ -7,19 +7,24 @@ export const metadata = {
 };
 
 async function getTours() {
-  return await prisma.tour.findMany({
-    include: {
-      schedules: true,
-      motorcycles: {
-        include: {
-          motorcycle: true,
+  try {
+    return await prisma.tour.findMany({
+      include: {
+        schedules: true,
+        motorcycles: {
+          include: {
+            motorcycle: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching tours:", error);
+    return []; // Return empty array as fallback
+  }
 }
 
 export default async function ToursPage() {

@@ -1,8 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { Tour } from "@/app/types/tour";
 import { DifficultyLevel } from "@prisma/client";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Checkbox } from "@/app/components/ui/checkbox";
+import Textarea from "@/app/components/ui/textarea";
+import { Label } from "@/app/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/app/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { toast } from "sonner";
 
 const difficultyOptions = [
   { value: "EASY", label: "Easy" },
@@ -11,269 +38,339 @@ const difficultyOptions = [
   { value: "EXTREME", label: "Extreme" },
 ];
 
-const defaultFormData: Omit<Tour, "id"> = {
-  name: "",
-  description: "",
-  difficulty: "MODERATE" as DifficultyLevel,
-  duration: 1,
-  distance: 0,
-  startLocation: "",
-  endLocation: "",
-  maxParticipants: 10,
-  basePrice: 0,
-  published: false,
-};
+// Zod schema for form validation
+const tourFormSchema = z.object({
+  name: z
+    .string()
+    .min(3, { message: "Tour name must be at least 3 characters" }),
+  description: z
+    .string()
+    .min(10, { message: "Description must be at least 10 characters" }),
+  difficulty: z.enum(["EASY", "MODERATE", "CHALLENGING", "EXTREME"]),
+  duration: z.coerce
+    .number()
+    .int()
+    .positive({ message: "Duration must be a positive number" }),
+  distance: z.coerce
+    .number()
+    .nonnegative({ message: "Distance must be a non-negative number" }),
+  startLocation: z.string().min(2, { message: "Start location is required" }),
+  endLocation: z.string().min(2, { message: "End location is required" }),
+  maxParticipants: z.coerce
+    .number()
+    .int()
+    .positive({ message: "Max participants must be a positive number" }),
+  basePrice: z.coerce
+    .number()
+    .nonnegative({ message: "Base price must be a non-negative number" }),
+  published: z.boolean().optional().default(false),
+});
+
+type TourFormValues = z.infer<typeof tourFormSchema>;
 
 interface TourFormProps {
-  initialData: Tour | null;
-  onSubmit: (data: Omit<Tour, "id">) => void;
-  onCancel: () => void;
-  isSubmitting: boolean;
+  initialData?: Tour | null;
+  onSubmit?: (tourData: Omit<Tour, "id">) => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  isSubmitting?: boolean;
 }
 
 export default function TourForm({
   initialData,
   onSubmit,
+  onSuccess,
   onCancel,
-  isSubmitting,
 }: TourFormProps) {
-  const [formData, setFormData] = useState(defaultFormData);
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check authentication
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name,
-        description: initialData.description,
-        difficulty: initialData.difficulty,
-        duration: initialData.duration,
-        distance: initialData.distance,
-        startLocation: initialData.startLocation,
-        endLocation: initialData.endLocation,
-        maxParticipants: initialData.maxParticipants,
-        basePrice: initialData.basePrice,
-        published: initialData.published,
-      });
-    } else {
-      setFormData(defaultFormData);
+    if (status === "unauthenticated") {
+      router.push("/auth/signin?callbackUrl=/tours");
     }
-  }, [initialData]);
+  }, [status, router]);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const target = e.target;
-    const value =
-      target.type === "checkbox"
-        ? (target as HTMLInputElement).checked
-        : target.value;
-    const name = target.name;
+  // Initialize form with react-hook-form and zod validation
+  const form = useForm<TourFormValues>({
+    resolver: zodResolver(tourFormSchema) as any,
+    defaultValues: {
+      name: initialData?.name || "",
+      description: initialData?.description || "",
+      difficulty: initialData?.difficulty || "MODERATE",
+      duration: initialData?.duration || 1,
+      distance: initialData?.distance ? Number(initialData.distance) : 0,
+      startLocation: initialData?.startLocation || "",
+      endLocation: initialData?.endLocation || "",
+      maxParticipants: initialData?.maxParticipants || 10,
+      basePrice: initialData?.basePrice ? Number(initialData.basePrice) : 0,
+      published: initialData?.published ?? false,
+    },
+  });
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "difficulty"
-          ? (value as DifficultyLevel)
-          : name === "basePrice"
-          ? Number(value)
-          : value,
-    }));
+  // Mutation for creating/updating tour
+  const tourMutation = useMutation({
+    mutationFn: async (values: TourFormValues) => {
+      const url = initialData ? `/api/tours/${initialData.id}` : "/api/tours";
+
+      const method = initialData ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save tour");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate and refetch tours query
+      queryClient.invalidateQueries({ queryKey: ["tours"] });
+
+      // Show success message
+      toast.success(
+        initialData ? "Tour updated successfully" : "Tour created successfully"
+      );
+
+      // Call onSuccess callback or redirect
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/tours");
+      }
+    },
+    onError: (error) => {
+      toast.error(`Error: ${error.message}`);
+      setIsSubmitting(false);
+    },
+  });
+
+  const onSubmitForm = async (values: TourFormValues) => {
+    setIsSubmitting(true);
+    if (onSubmit) {
+      onSubmit(values as any);
+    } else {
+      tourMutation.mutate(values);
+    }
   };
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
+  // If loading authentication, show loading state
+  if (status === "loading") {
+    return (
+      <div className="flex justify-center p-8 font-primary">Loading...</div>
+    );
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 font-primary">
-      <div>
-        <label htmlFor="name" className="label">
-          Tour Name
-        </label>
-        <input
-          type="text"
-          id="name"
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmitForm as any)}
+        className="space-y-6 font-primary"
+      >
+        <FormField
+          control={form.control as any}
           name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="input"
-          required
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel>Tour Name</FormLabel>
+              <FormControl>
+                <Input {...field} className="input" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div>
-        <label htmlFor="description" className="label">
-          Description
-        </label>
-        <textarea
-          id="description"
+        <FormField
+          control={form.control as any}
           name="description"
-          value={formData.description}
-          onChange={handleChange}
-          rows={4}
-          className="input"
-          required
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea {...field} className="input" rows={4} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="difficulty" className="label">
-            Difficulty
-          </label>
-          <select
-            id="difficulty"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control as any}
             name="difficulty"
-            value={formData.difficulty}
-            onChange={handleChange}
-            className="input"
-          >
-            {difficultyOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Difficulty</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {difficultyOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div>
-          <label htmlFor="duration" className="label">
-            Duration (days)
-          </label>
-          <input
-            type="number"
-            id="duration"
+          <FormField
+            control={form.control as any}
             name="duration"
-            value={formData.duration}
-            onChange={handleChange}
-            min={1}
-            className="input"
-            required
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Duration (days)</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} className="input" min={1} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="distance" className="label">
-            Distance (km)
-          </label>
-          <input
-            type="number"
-            id="distance"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control as any}
             name="distance"
-            value={formData.distance}
-            onChange={handleChange}
-            min={0}
-            className="input"
-            required
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Distance (km)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    className="input"
+                    min={0}
+                    step={1}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div>
-          <label htmlFor="maxParticipants" className="label">
-            Max Participants
-          </label>
-          <input
-            type="number"
-            id="maxParticipants"
+          <FormField
+            control={form.control as any}
             name="maxParticipants"
-            value={formData.maxParticipants}
-            onChange={handleChange}
-            min={1}
-            className="input"
-            required
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Max Participants</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} className="input" min={1} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="startLocation" className="label">
-            Start Location
-          </label>
-          <input
-            type="text"
-            id="startLocation"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control as any}
             name="startLocation"
-            value={formData.startLocation}
-            onChange={handleChange}
-            className="input"
-            required
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>Start Location</FormLabel>
+                <FormControl>
+                  <Input {...field} className="input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
-
-        <div>
-          <label htmlFor="endLocation" className="label">
-            End Location
-          </label>
-          <input
-            type="text"
-            id="endLocation"
+          <FormField
+            control={form.control as any}
             name="endLocation"
-            value={formData.endLocation}
-            onChange={handleChange}
-            className="input"
-            required
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel>End Location</FormLabel>
+                <FormControl>
+                  <Input {...field} className="input" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
-      </div>
 
-      <div>
-        <label htmlFor="basePrice" className="label">
-          Base Price ($)
-        </label>
-        <input
-          type="number"
-          id="basePrice"
+        <FormField
+          control={form.control as any}
           name="basePrice"
-          value={
-            typeof formData.basePrice === "object"
-              ? formData.basePrice.toNumber()
-              : formData.basePrice
-          }
-          onChange={handleChange}
-          min={0}
-          step={0.01}
-          className="input"
-          required
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel>Base Price ($)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  {...field}
+                  className="input"
+                  min={0}
+                  step={0.01}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="published"
+        <FormField
+          control={form.control as any}
           name="published"
-          checked={formData.published}
-          onChange={handleChange}
-          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Publish Tour</FormLabel>
+              </div>
+            </FormItem>
+          )}
         />
-        <label htmlFor="published" className="ml-2 block text-sm text-gray-700">
-          Publish Tour
-        </label>
-      </div>
 
-      <div className="flex justify-end space-x-3 pt-4">
-        {initialData && (
-          <button type="button" onClick={onCancel} className="btn btn-outline">
-            Cancel
-          </button>
-        )}
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? "Saving..."
-            : initialData
-            ? "Update Tour"
-            : "Create Tour"}
-        </button>
-      </div>
-    </form>
+        <div className="flex justify-end space-x-3 pt-4">
+          {onCancel && (
+            <Button type="button" onClick={onCancel} variant="outline">
+              Cancel
+            </Button>
+          )}
+          <Button
+            type="submit"
+            variant="tertiary"
+            isLoading={isSubmitting}
+            disabled={isSubmitting}
+          >
+            {initialData ? "Update Tour" : "Create Tour"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

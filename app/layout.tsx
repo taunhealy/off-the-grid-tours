@@ -1,5 +1,5 @@
-import "./globals.css";
-import Providers from "./providers";
+import "./styles/globals.css";
+import { Providers } from "./providers";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-primary" });
@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-primary`}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

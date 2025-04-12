@@ -10,7 +10,8 @@ export interface ButtonProps
     | "outline"
     | "ghost"
     | "link"
-    | "secondary";
+    | "secondary"
+    | "tertiary";
   size?: "default" | "sm" | "lg" | "icon";
   isLoading?: boolean;
 }
