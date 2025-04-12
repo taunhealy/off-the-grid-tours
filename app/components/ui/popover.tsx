@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useFloating, offset, flip, shift } from "@floating-ui/react";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface PopoverProps {
   children: React.ReactNode;

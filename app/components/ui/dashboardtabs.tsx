@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/app/components/ui/Button";
+import { Button } from "@/app/components/ui/button";
 
 interface Tab {
   id: string;

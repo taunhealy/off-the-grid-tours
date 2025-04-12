@@ -1,8 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
-import { Button } from "@/app/components/ui/button";
-import Navbar from "@/app/components/navbar";
 import Hero from "@/app/components/hero";
+import Navbar from "./components/navbar";
 
 export default function Home() {
   return (

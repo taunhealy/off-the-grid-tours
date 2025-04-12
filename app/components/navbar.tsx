@@ -14,13 +14,6 @@ export function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.svg" // Replace with your actual logo
-              alt="Motorcycle Tours Logo"
-              width={40}
-              height={40}
-              className="mr-2"
-            />
             <span className="font-semibold text-lg">Moto Tours</span>
           </Link>
 
@@ -40,6 +33,12 @@ export function Navbar() {
             </Link>
             <Link href="/contact" className="text-gray-700 hover:text-gray-900">
               Contact
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-gray-700 hover:text-gray-900"
+            >
+              Dashboard
             </Link>
           </div>
 
@@ -125,6 +124,13 @@ export function Navbar() {
               onClick={() => setIsMenuOpen(false)}
             >
               Contact
+            </Link>
+            <Link
+              href="/dashboard"
+              className="block text-gray-700 hover:text-gray-900 py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Dashboard
             </Link>
             <div className="flex space-x-4 pt-2">
               <Button variant="outline" size="sm">

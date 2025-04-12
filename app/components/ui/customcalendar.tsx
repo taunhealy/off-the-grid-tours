@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/app/components/ui/Button";
-import { cn } from "@/app/lib/utils";
+import { Button } from "@/app/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   format,
   addMonths,

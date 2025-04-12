@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import TourForm from "./TourForm";
 import TourList from "./TourList";
 import { Tour } from "@/app/types/tour";
+import Link from "next/link";
 
 // API functions for CRUD operations
 const fetchTours = async () => {
@@ -105,6 +105,15 @@ export default function TourManagement({ initialTours }: TourManagementProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-h2">Tours</h2>
+          <Link
+            href="/dashboard/tours/new"
+            className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Add New Tour
+          </Link>
+        </div>
         <TourList
           tours={tours}
           onEdit={handleEdit}
@@ -117,12 +126,6 @@ export default function TourManagement({ initialTours }: TourManagementProps) {
           <h2 className="text-h3 mb-4">
             {selectedTour ? "Edit Tour" : "Add New Tour"}
           </h2>
-          <TourForm
-            initialData={selectedTour}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            isSubmitting={createMutation.isPending || updateMutation.isPending}
-          />
         </div>
       </div>
     </div>

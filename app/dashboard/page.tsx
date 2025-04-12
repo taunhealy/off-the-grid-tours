@@ -142,7 +142,10 @@ function DashboardContent() {
             <p className="text-gray-500 mb-4 font-primary">
               No tours available yet
             </p>
-            <Link href="/tours" className="btn btn-primary font-primary">
+            <Link
+              href="/dashboard/tours"
+              className="btn btn-primary font-primary"
+            >
               Browse Tours
             </Link>
           </div>
