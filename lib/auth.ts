@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcrypt";
+import { getServerSession as getServerSessionNextAuth } from "next-auth/next";
 
 const prisma = new PrismaClient();
 
@@ -53,3 +54,5 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin",
   },
 };
+
+export const getServerSession = () => getServerSessionNextAuth(authOptions);

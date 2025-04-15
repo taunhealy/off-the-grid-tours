@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
+import { BookingsListSkeleton } from "./BookingsListSkeleton";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -73,12 +74,16 @@ interface Booking {
   imageUrl: string;
 }
 
-export function BookingsList() {
+interface BookingsListProps {
+  initialBookings: Booking[];
+}
+
+export function BookingsList({ initialBookings }: BookingsListProps) {
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get("status") || "all";
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [sortBy, setSortBy] = useState("date-desc");
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,9 +150,15 @@ export function BookingsList() {
           className="w-full max-w-md"
         >
           <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="completed">Past</TabsTrigger>
+            <TabsTrigger value="all" title="All bookings">
+              All
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" title="Upcoming bookings">
+              Upcoming
+            </TabsTrigger>
+            <TabsTrigger value="completed" title="Past bookings">
+              Past
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 

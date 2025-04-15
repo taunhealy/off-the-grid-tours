@@ -8,7 +8,7 @@ export function CustomPrismaAdapter(): Adapter {
 
   return {
     ...adapter,
-    createUser: async (user) => {
+    createUser: async (user: any) => {
       // Generate a random password for OAuth users
       const randomPassword = randomBytes(16).toString("hex");
 
