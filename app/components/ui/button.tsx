@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
+import { Slot } from "@radix-ui/react-slot";
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,6 +15,7 @@ export interface ButtonProps
     | "tertiary";
   size?: "default" | "sm" | "lg" | "icon";
   isLoading?: boolean;
+  asChild?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -25,12 +27,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading,
       children,
       disabled,
+      asChild = false,
       ...props
     },
     ref
   ) => {
+    const Comp = asChild ? Slot : "button";
     return (
-      <button
+      <Comp
         className={cn(
           // Base styles
           "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
@@ -94,7 +98,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           </div>
         )}
         {children}
-      </button>
+      </Comp>
     );
   }
 );

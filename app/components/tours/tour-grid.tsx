@@ -1,13 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/app/components/ui/badge";
-import { Calendar, MapPin, Clock, Bike } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/app/components/ui/card";
 
-export default async function TourGrid({
-  searchParams,
-}: {
+interface TourGridProps {
   searchParams: {
     month?: string;
     bikeType?: string;
@@ -15,34 +17,37 @@ export default async function TourGrid({
     duration?: string;
     search?: string;
   };
-}) {
+}
+
+export default async function TourGrid({ searchParams }: TourGridProps) {
   // Build filter conditions based on search params
   const where: any = {
     published: true,
   };
 
-  // Filter by difficulty if provided
+  // Apply search filter
+  if (searchParams.search) {
+    where.OR = [
+      { name: { contains: searchParams.search, mode: "insensitive" } },
+      { description: { contains: searchParams.search, mode: "insensitive" } },
+    ];
+  }
+
+  // Apply difficulty filter
   if (searchParams.difficulty) {
     where.difficulty = searchParams.difficulty;
   }
 
-  // Filter by duration range if provided
+  // Apply duration filter
   if (searchParams.duration) {
-    const [min, max] = searchParams.duration.split("-");
-    if (max) {
-      where.duration = {
-        gte: parseInt(min),
-        lte: parseInt(max),
-      };
-    } else {
-      // Handle "15+" case
-      where.duration = {
-        gte: parseInt(min.replace("+", "")),
-      };
-    }
+    const [min, max] = searchParams.duration.split("-").map(Number);
+    where.duration = {
+      gte: min || 1,
+      lte: max || 999,
+    };
   }
 
-  // Filter by bike type if provided
+  // Apply bike type filter (requires joining with TourMotorcycle and Motorcycle)
   if (searchParams.bikeType) {
     where.motorcycles = {
       some: {
@@ -53,25 +58,37 @@ export default async function TourGrid({
     };
   }
 
-  // Filter by month if provided
+  // Apply month filter (requires joining with TourSchedule)
   if (searchParams.month) {
-    const monthIndex = new Date(`${searchParams.month} 1, 2000`).getMonth();
-    where.schedules = {
-      some: {
-        startDate: {
-          gte: new Date(new Date().getFullYear(), monthIndex, 1),
-          lt: new Date(new Date().getFullYear(), monthIndex + 1, 1),
-        },
-      },
-    };
-  }
-
-  // Search by name or description if provided
-  if (searchParams.search) {
-    where.OR = [
-      { name: { contains: searchParams.search, mode: "insensitive" } },
-      { description: { contains: searchParams.search, mode: "insensitive" } },
+    // Convert month name to number (1-12)
+    const monthNames = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december",
     ];
+
+    const monthIndex = monthNames.indexOf(searchParams.month.toLowerCase());
+
+    if (monthIndex !== -1) {
+      const monthNumber = monthIndex + 1; // Convert to 1-based index
+      where.schedules = {
+        some: {
+          startDate: {
+            gte: new Date(new Date().getFullYear(), monthIndex, 1), // Use monthIndex (0-based)
+            lt: new Date(new Date().getFullYear(), monthIndex + 1, 1), // Next month
+          },
+        },
+      };
+    }
   }
 
   // Fetch tours with filters
@@ -89,11 +106,6 @@ export default async function TourGrid({
           },
         },
       },
-      motorcycles: {
-        include: {
-          motorcycle: true,
-        },
-      },
     },
     orderBy: {
       createdAt: "desc",
@@ -102,10 +114,10 @@ export default async function TourGrid({
 
   if (tours.length === 0) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-xl font-medium mb-2">No tours found</h3>
-        <p className="text-gray-500">
-          Try adjusting your filters to find available tours.
+      <div className="text-center py-10">
+        <h3 className="text-xl font-medium text-gray-600">No tours found</h3>
+        <p className="mt-2 text-gray-500">
+          Try adjusting your filters or search criteria
         </p>
       </div>
     );
@@ -114,98 +126,53 @@ export default async function TourGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {tours.map((tour) => (
-        <Link
-          href={`/tours/${tour.id}`}
-          key={tour.id}
-          className="group bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
-        >
-          <div className="relative h-48">
-            {tour.images.length > 0 ? (
-              <Image
-                src={tour.images[0]}
-                alt={tour.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-400">No image available</span>
+        <Link href={`/tours/${tour.id}`} key={tour.id}>
+          <Card className="h-full hover:shadow-md transition-shadow">
+            <CardHeader className="p-0">
+              <div className="relative h-48 w-full">
+                <Image
+                  src={tour.images[0] || "/images/placeholder-tour.jpg"}
+                  alt={tour.name}
+                  fill
+                  className="object-cover rounded-t-lg"
+                />
+                <div className="absolute bottom-2 right-2">
+                  <Badge variant="secondary" className="bg-white/90 text-black">
+                    {tour.duration} days
+                  </Badge>
+                </div>
               </div>
-            )}
-            <Badge
-              className="absolute top-3 right-3"
-              variant={
-                tour.difficulty === "EASY"
-                  ? "outline"
-                  : tour.difficulty === "MODERATE"
-                  ? "secondary"
-                  : tour.difficulty === "CHALLENGING"
-                  ? "default"
-                  : "destructive"
-              }
-            >
-              {tour.difficulty
-                .toLowerCase()
-                .replace(/\b\w/g, (l) => l.toUpperCase())}
-            </Badge>
-          </div>
-
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2 group-hover:text-blue-600 transition-colors">
-              {tour.name}
-            </h3>
-
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-              {tour.description}
-            </p>
-
-            <div className="flex items-center text-sm text-gray-500 mb-2">
-              <MapPin size={16} className="mr-1" />
-              <span>
-                {tour.startLocation} to {tour.endLocation}
-              </span>
-            </div>
-
-            <div className="flex items-center text-sm text-gray-500 mb-2">
-              <Clock size={16} className="mr-1" />
-              <span>{tour.duration} days</span>
-            </div>
-
-            {tour.motorcycles.length > 0 && (
-              <div className="flex items-center text-sm text-gray-500 mb-4">
-                <Bike size={16} className="mr-1" />
-                <span>
-                  {tour.motorcycles
-                    .slice(0, 2)
-                    .map((tm) => tm.motorcycle.make + " " + tm.motorcycle.model)
-                    .join(", ")}
-                  {tour.motorcycles.length > 2 && "..."}
+            </CardHeader>
+            <CardContent className="pt-4">
+              <h3 className="font-bold text-lg mb-1">{tour.name}</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="capitalize">
+                  {tour.difficulty.toLowerCase()}
+                </Badge>
+                <span className="text-sm text-gray-500">
+                  {tour.startLocation} to {tour.endLocation}
                 </span>
               </div>
-            )}
-
-            <div className="flex justify-between items-center">
-              <div className="font-semibold">
-                From {formatCurrency(Number(tour.basePrice))}
-              </div>
-
-              {tour.schedules.length > 0 && (
-                <div className="flex items-center text-sm text-gray-500">
-                  <Calendar size={16} className="mr-1" />
+              <p className="text-sm text-gray-600 line-clamp-2">
+                {tour.description}
+              </p>
+            </CardContent>
+            <CardFooter className="flex justify-between border-t pt-4">
+              <div className="text-sm">
+                {tour.schedules.length > 0 ? (
                   <span>
-                    {new Date(tour.schedules[0].startDate).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "short",
-                        day: "numeric",
-                      }
-                    )}
+                    Next:{" "}
+                    {new Date(tour.schedules[0].startDate).toLocaleDateString()}
                   </span>
-                </div>
-              )}
-            </div>
-          </div>
+                ) : (
+                  <span>No upcoming dates</span>
+                )}
+              </div>
+              <div className="font-bold">
+                ${Number(tour.basePrice).toLocaleString()}
+              </div>
+            </CardFooter>
+          </Card>
         </Link>
       ))}
     </div>

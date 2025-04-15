@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
-import { useQueryState } from "nuqs";
 import {
   Accordion,
   AccordionContent,
@@ -34,30 +33,50 @@ const difficultyLevels = Object.values(DifficultyLevel);
 const durationRanges = ["1-3", "4-7", "8-14", "15+"];
 
 export default function TourFilters({
-  searchParams,
+  initialMonth,
+  initialBikeType,
+  initialDifficulty,
+  initialDuration,
+  initialSearch,
 }: {
-  searchParams: Record<string, string | undefined>;
+  initialMonth?: string;
+  initialBikeType?: string;
+  initialDifficulty?: string;
+  initialDuration?: string;
+  initialSearch?: string;
 }) {
   const router = useRouter();
-  const currentSearchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [month, setMonth] = useQueryState("month");
-  const [bikeType, setBikeType] = useQueryState("bikeType");
-  const [difficulty, setDifficulty] = useQueryState("difficulty");
-  const [duration, setDuration] = useQueryState("duration");
+  const createQueryString = (name: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(name, value);
+    } else {
+      params.delete(name);
+    }
+    return params.toString();
+  };
 
-  const handleReset = useCallback(() => {
-    setMonth(null);
-    setBikeType(null);
-    setDifficulty(null);
-    setDuration(null);
-  }, [setMonth, setBikeType, setDifficulty, setDuration]);
+  const handleFilterChange = (name: string, value: string | null) => {
+    router.push(`${pathname}?${createQueryString(name, value || "")}`);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Filters</h2>
-        <Button variant="outline" size="sm" onClick={handleReset}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            handleFilterChange("month", null);
+            handleFilterChange("bikeType", null);
+            handleFilterChange("difficulty", null);
+            handleFilterChange("duration", null);
+          }}
+        >
           Reset
         </Button>
       </div>
@@ -74,9 +93,12 @@ export default function TourFilters({
                 <div key={m} className="flex items-center space-x-2">
                   <Checkbox
                     id={`month-${m}`}
-                    checked={month === m.toLowerCase()}
+                    checked={initialMonth === m.toLowerCase()}
                     onCheckedChange={(checked) => {
-                      setMonth(checked ? m.toLowerCase() : null);
+                      handleFilterChange(
+                        "month",
+                        checked ? m.toLowerCase() : null
+                      );
                     }}
                   />
                   <Label htmlFor={`month-${m}`}>{m}</Label>
@@ -94,9 +116,9 @@ export default function TourFilters({
                 <div key={type} className="flex items-center space-x-2">
                   <Checkbox
                     id={`bike-${type}`}
-                    checked={bikeType === type}
+                    checked={initialBikeType === type}
                     onCheckedChange={(checked) => {
-                      setBikeType(checked ? type : null);
+                      handleFilterChange("bikeType", checked ? type : null);
                     }}
                   />
                   <Label htmlFor={`bike-${type}`}>
@@ -119,9 +141,9 @@ export default function TourFilters({
                 <div key={level} className="flex items-center space-x-2">
                   <Checkbox
                     id={`difficulty-${level}`}
-                    checked={difficulty === level}
+                    checked={initialDifficulty === level}
                     onCheckedChange={(checked) => {
-                      setDifficulty(checked ? level : null);
+                      handleFilterChange("difficulty", checked ? level : null);
                     }}
                   />
                   <Label htmlFor={`difficulty-${level}`}>
@@ -143,9 +165,9 @@ export default function TourFilters({
                 <div key={range} className="flex items-center space-x-2">
                   <Checkbox
                     id={`duration-${range}`}
-                    checked={duration === range}
+                    checked={initialDuration === range}
                     onCheckedChange={(checked) => {
-                      setDuration(checked ? range : null);
+                      handleFilterChange("duration", checked ? range : null);
                     }}
                   />
                   <Label htmlFor={`duration-${range}`}>

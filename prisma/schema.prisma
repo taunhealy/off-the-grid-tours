@@ -35,6 +35,11 @@ model User {
   guidedTours       Tour[]    @relation("TourGuide")
   accounts          Account[]
   sessions          Session[]
+  guidedSchedules   TourSchedule[]
+  guideProfile      GuideProfile?
+  customerProfile   CustomerProfile?
+  auditLogs         AuditLog[]
+  waitlistEntries   WaitlistEntry[]
 }
 
 enum UserRole {
@@ -69,6 +74,7 @@ model Motorcycle {
   updatedAt       DateTime  @updatedAt
   bookings        BookingMotorcycle[]
   tourMotorcycles TourMotorcycle[]
+  availability    MotorcycleAvailability[]
   brand           String
   weight          Int       // in kg
   seatHeight      Int       // in mm
@@ -112,6 +118,17 @@ model Tour {
   motorcycles     TourMotorcycle[]
   accommodations  TourAccommodation[]
   itinerary       TourItinerary[]
+  deleted         Boolean   @default(false)
+  deletedAt       DateTime?
+  
+  // Add these relations
+  categoryId      String?
+  category        TourCategory? @relation(fields: [categoryId], references: [id])
+  tags            Tag[]         @relation("TourTags")
+  startLocationId String?
+  startLocationDetails Location? @relation("TourStart", fields: [startLocationId], references: [id])
+  endLocationId   String?
+  endLocationDetails Location? @relation("TourEnd", fields: [endLocationId], references: [id])
 }
 
 enum DifficultyLevel {
@@ -123,19 +140,23 @@ enum DifficultyLevel {
 
 // Available tour dates
 model TourSchedule {
-  id              String    @id @default(cuid())
+  id              String           @id @default(cuid())
   tourId          String
-  tour            Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  tour            Tour             @relation(fields: [tourId], references: [id], onDelete: Cascade)
   startDate       DateTime
   endDate         DateTime
-  price           Decimal   @db.Decimal(10, 2)
+  price           Decimal          @db.Decimal(10, 2)
   availableSpots  Int
-  status          ScheduleStatus @default(OPEN)
+  status          ScheduleStatus   @default(OPEN)
   weatherForecast Json?     // Weather data
   notes           String?   @db.Text
+  guideId         String?   // Guide assigned to this specific schedule
+  guide           User?     @relation(fields: [guideId], references: [id])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   bookings        Booking[]
+  motorcycleAvailability MotorcycleAvailability[]
+  waitlistEntries WaitlistEntry[]
 }
 
 enum ScheduleStatus {
@@ -167,6 +188,10 @@ model TourAccommodation {
   type          AccommodationType
   amenities     String[]
   images        String[]
+  
+  // Add location relation
+  locationId    String?
+  locationDetails Location? @relation(fields: [locationId], references: [id])
 }
 
 enum AccommodationType {
@@ -195,6 +220,7 @@ model Booking {
   motorcycles       BookingMotorcycle[]
   payments          Payment[]
   review            Review?
+  paymentPlan       PaymentPlan?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 }
@@ -249,6 +275,10 @@ model Payment {
   status        PaymentStatus @default(PENDING)
   transactionId String?
   notes         String?
+  
+  // Add payment plan relation
+  paymentPlanId String?
+  paymentPlan   PaymentPlan? @relation(fields: [paymentPlanId], references: [id])
 }
 
 enum PaymentMethod {
@@ -332,4 +362,95 @@ model TourItinerary {
   highlights  String[]  // Special highlights of the day
   overnight   String?   // Where travelers stay overnight
   images      String[]  // Images for this day
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  action      String      // CREATE, UPDATE, DELETE
+  entityType  String      // Tour, Booking, etc.
+  entityId    String
+  details     Json?       // What changed
+  timestamp   DateTime    @default(now())
+}
+
+model MotorcycleAvailability {
+  id            String       @id @default(cuid())
+  motorcycleId  String
+  motorcycle    Motorcycle   @relation(fields: [motorcycleId], references: [id])
+  startDate     DateTime
+  endDate       DateTime
+  reason        String?      // TOUR, MAINTENANCE, etc.
+  tourScheduleId String?
+  tourSchedule  TourSchedule? @relation(fields: [tourScheduleId], references: [id])
+}
+
+model GuideProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String?   @db.Text
+  languages       String[]
+  certifications  String[]
+  specialties     String[]  // Off-road, mountain, etc.
+  yearsExperience Int       @default(0)
+}
+
+model CustomerProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  ridingExperience Int?     // Years
+  preferredBikeTypes BikeType[]
+  dietaryRestrictions String[]
+  medicalNotes    String?   @db.Text
+}
+
+model PaymentPlan {
+  id            String    @id @default(cuid())
+  bookingId     String    @unique  // Make unique to ensure one plan per booking
+  booking       Booking   @relation(fields: [bookingId], references: [id])
+  totalAmount   Decimal   @db.Decimal(10, 2)
+  installments  Int
+  frequency     String    // WEEKLY, MONTHLY
+  payments      Payment[]
+}
+
+model WaitlistEntry {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  tourScheduleId  String
+  tourSchedule    TourSchedule @relation(fields: [tourScheduleId], references: [id])
+  requestDate     DateTime  @default(now())
+  participants    Int       @default(1)
+  notes           String?
+  status          String    @default("WAITING") // WAITING, OFFERED, EXPIRED
+}
+
+model TourCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  tours       Tour[]
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  tours       Tour[]    @relation("TourTags")
+}
+
+model Location {
+  id          String    @id @default(cuid())
+  name        String
+  address     String?
+  city        String
+  country     String
+  latitude    Float?
+  longitude   Float?
+  toursStarting Tour[] @relation("TourStart")
+  toursEnding   Tour[] @relation("TourEnd")
+  accommodations TourAccommodation[]
 }

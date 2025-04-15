@@ -49,7 +49,19 @@ Key Conventions
 - Use 'nuqs' for URL search parameter state management.
 - Optimize Web Vitals (LCP, CLS, FID).
 - Limit 'use client':
-  - Favor server components and Next.js SSR.
+  - Favor server components and Next.js SSR. // This is a Server Component that fetches its own data
+    export default async function ProductList({ category }) {
+    // Data fetching happens on the server
+    const products = await fetchProducts(category);
+  return (
+  <div>
+  {products.map(product => (
+  <ProductCard key={product.id} product={product} />
+  ))}
+  </div>
+  );
+  }
+  - Component-level/page data fetching: By fetching data in the component/page closest to where the data is used, follows the principle of encapsulation. Rather use Next.js data fetching utilities than use-effect hooks or Tanstack Query.
   - Use only for Web API access in small components.
   - Avoid for data fetching or state management.
   - Use Sonner library instad of use-toast for notifications

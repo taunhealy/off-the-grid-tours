@@ -9,17 +9,18 @@ export const metadata = {
     "Browse our selection of guided motorcycle tours across various terrains and difficulty levels.",
 };
 
-export default async function ToursPage({
+export default function ToursPage({
   searchParams,
 }: {
-  searchParams: {
-    month?: string;
-    bikeType?: string;
-    difficulty?: string;
-    duration?: string;
-    search?: string;
-  };
+  searchParams: { [key: string]: string | string[] | undefined };
 }) {
+  // Access search params directly
+  const month = searchParams.month as string;
+  const bikeType = searchParams.bikeType as string;
+  const difficulty = searchParams.difficulty as string;
+  const duration = searchParams.duration as string;
+  const search = searchParams.search as string;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Motorcycle Tours</h1>
@@ -27,7 +28,13 @@ export default async function ToursPage({
       <div className="flex flex-col md:flex-row gap-8">
         {/* Filter Sidebar */}
         <div className="w-full md:w-1/4">
-          <TourFilters searchParams={searchParams} />
+          <TourFilters
+            initialMonth={month}
+            initialBikeType={bikeType}
+            initialDifficulty={difficulty}
+            initialDuration={duration}
+            initialSearch={search}
+          />
         </div>
 
         {/* Tour Grid */}

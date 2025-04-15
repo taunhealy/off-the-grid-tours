@@ -26,6 +26,10 @@ export function Navbar() {
     router.push("/register");
   };
 
+  const handleDashboard = () => {
+    router.push("/dashboard");
+  };
+
   return (
     <nav className="bg-white shadow-sm">
       <div className="container mx-auto px-4">
@@ -63,12 +67,6 @@ export function Navbar() {
             >
               Contact
             </Link>
-            <Link
-              href="/dashboard"
-              className="font-primary text-black hover:text-gray-900"
-            >
-              Dashboard
-            </Link>
           </div>
 
           {/* Sign In Button */}
@@ -78,6 +76,14 @@ export function Navbar() {
                 <span className="text-black font-primary">
                   Hi, {session.user?.name || "User"}
                 </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDashboard}
+                  className="text-black"
+                >
+                  Dashboard
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -166,19 +172,20 @@ export function Navbar() {
             >
               Contact
             </Link>
-            <Link
-              href="/dashboard"
-              className="block font-primary text-black hover:text-gray-900 py-2"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
             <div className="flex space-x-4 pt-2">
               {session ? (
                 <>
                   <span className="text-black font-primary">
                     Hi, {session.user?.name || "User"}
                   </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDashboard}
+                    className="text-black"
+                  >
+                    Dashboard
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

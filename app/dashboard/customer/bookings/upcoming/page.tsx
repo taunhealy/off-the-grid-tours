@@ -25,15 +25,23 @@ async function UpcomingBookings() {
   const bookings = await prisma.booking.findMany({
     where: {
       userId: session.user.id,
-      startDate: {
-        gte: new Date(),
+      tourSchedule: {
+        startDate: {
+          gte: new Date(),
+        },
       },
     },
     include: {
-      tour: true,
+      tourSchedule: {
+        include: {
+          tour: true,
+        },
+      },
     },
     orderBy: {
-      startDate: "asc",
+      tourSchedule: {
+        startDate: "asc",
+      },
     },
   });
 
@@ -50,10 +58,17 @@ async function UpcomingBookings() {
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h3 className="text-h5 font-primary">{booking.tour.name}</h3>
+                  <h3 className="text-h5 font-primary">
+                    {booking.tourSchedule.tour.name}
+                  </h3>
                   <p className="text-gray-600 font-primary">
-                    {new Date(booking.startDate).toLocaleDateString()} -{" "}
-                    {new Date(booking.endDate).toLocaleDateString()}
+                    {new Date(
+                      booking.tourSchedule.startDate
+                    ).toLocaleDateString()}{" "}
+                    -{" "}
+                    {new Date(
+                      booking.tourSchedule.endDate
+                    ).toLocaleDateString()}
                   </p>
                   <div className="mt-1">
                     <span
