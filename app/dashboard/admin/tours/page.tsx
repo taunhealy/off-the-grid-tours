@@ -1,4 +1,4 @@
-import { prisma } from "@/app/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import TourManagement from "@/app/components/tours/TourManagement";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";

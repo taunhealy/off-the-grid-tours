@@ -2,9 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Tour } from "@/app/types/tour";
+import { Tour } from "@/lib/types/tour";
 import Link from "next/link";
 import { Suspense } from "react";
+import { DashboardTabs } from "@/app/components/ui/dashboardtabs";
+import { useRouter } from "next/navigation";
 
 function DashboardSkeleton() {
   return (
@@ -42,6 +44,57 @@ function DashboardContent() {
   const { data: session } = useSession();
   const [tours, setTours] = useState<Tour[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Define tabs based on user role
+  const getTabs = () => {
+    const baseTabs = [{ id: "overview", label: "Overview" }];
+
+    if (!session?.user?.role || session.user.role === "CUSTOMER") {
+      return [
+        ...baseTabs,
+        { id: "bookings", label: "My Bookings" },
+        { id: "profile", label: "Profile" },
+      ];
+    }
+
+    if (session.user.role === "GUIDE") {
+      return [
+        ...baseTabs,
+        { id: "my-tours", label: "My Tours" },
+        { id: "schedule", label: "Schedule" },
+        { id: "profile", label: "Profile" },
+      ];
+    }
+
+    if (session.user.role === "ADMIN") {
+      return [
+        ...baseTabs,
+        { id: "tours", label: "Tours" },
+        { id: "users", label: "Users" },
+        { id: "bookings", label: "Bookings" },
+        { id: "motorcycles", label: "Motorcycles" },
+      ];
+    }
+
+    return baseTabs;
+  };
+
+  const handleTabChange = (tabId: string) => {
+    if (tabId === "overview") {
+      setActiveTab(tabId);
+      return;
+    }
+
+    // Navigate to the appropriate page based on role and tab
+    const role = session?.user?.role?.toLowerCase() || "customer";
+    if (role === "admin" || role === "guide" || role === "customer") {
+      router.push(`/dashboard/${role}/${tabId}`);
+    } else {
+      router.push(`/dashboard/${tabId}`);
+    }
+  };
 
   useEffect(() => {
     async function fetchTours() {
@@ -67,6 +120,12 @@ function DashboardContent() {
       <h1 className="text-h2 mb-6 font-primary">
         Welcome, {session?.user?.name || "Rider"}
       </h1>
+
+      <DashboardTabs
+        tabs={getTabs()}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100">

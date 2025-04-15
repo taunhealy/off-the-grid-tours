@@ -1,12 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/app/components/ui/button";
 import { useState } from "react";
+import { useSession, signOut, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/" });
+  };
+
+  const handleGoogleSignIn = async () => {
+    await signIn("google", {
+      callbackUrl: "/dashboard",
+    });
+  };
+
+  const handleSignUp = () => {
+    // Direct navigation to register page without triggering auth
+    router.push("/register");
+  };
 
   return (
     <nav className="bg-white shadow-sm">
@@ -14,29 +32,40 @@ export function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className="font-semibold text-lg">Moto Tours</span>
+            <span className="font-primary font-semibold text-lg text-black">
+              Moto Tours
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link href="/tours" className="text-gray-700 hover:text-gray-900">
+            <Link
+              href="/tours"
+              className="font-primary text-black hover:text-gray-900"
+            >
               Tours
             </Link>
             <Link
               href="/motorcycles"
-              className="text-gray-700 hover:text-gray-900"
+              className="font-primary text-black hover:text-gray-900"
             >
               Motorcycles
             </Link>
-            <Link href="/about" className="text-gray-700 hover:text-gray-900">
+            <Link
+              href="/about"
+              className="font-primary text-black hover:text-gray-900"
+            >
               About Us
             </Link>
-            <Link href="/contact" className="text-gray-700 hover:text-gray-900">
+            <Link
+              href="/contact"
+              className="font-primary text-black hover:text-gray-900"
+            >
               Contact
             </Link>
             <Link
               href="/dashboard"
-              className="text-gray-700 hover:text-gray-900"
+              className="font-primary text-black hover:text-gray-900"
             >
               Dashboard
             </Link>
@@ -44,22 +73,34 @@ export function Navbar() {
 
           {/* Sign In Button */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm">
-              <Link
-                href="/auth/signin"
-                className="w-full h-full flex items-center justify-center"
-              >
-                Sign In
-              </Link>
-            </Button>
-            <Button variant="default" size="sm">
-              <Link
-                href="/auth/signin"
-                className="w-full h-full flex items-center justify-center"
-              >
-                Sign Up
-              </Link>
-            </Button>
+            {session ? (
+              <>
+                <span className="text-black font-primary">
+                  Hi, {session.user?.name || "User"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-black"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGoogleSignIn}
+                >
+                  Sign In
+                </Button>
+                <Button variant="default" size="sm" onClick={handleSignUp}>
+                  Sign Up
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -99,56 +140,68 @@ export function Navbar() {
           <div className="md:hidden py-4 space-y-4">
             <Link
               href="/tours"
-              className="block text-gray-700 hover:text-gray-900 py-2"
+              className="block font-primary text-black hover:text-gray-900 py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Tours
             </Link>
             <Link
               href="/motorcycles"
-              className="block text-gray-700 hover:text-gray-900 py-2"
+              className="block font-primary text-black hover:text-gray-900 py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Motorcycles
             </Link>
             <Link
               href="/about"
-              className="block text-gray-700 hover:text-gray-900 py-2"
+              className="block font-primary text-black hover:text-gray-900 py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               About Us
             </Link>
             <Link
               href="/contact"
-              className="block text-gray-700 hover:text-gray-900 py-2"
+              className="block font-primary text-black hover:text-gray-900 py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Contact
             </Link>
             <Link
               href="/dashboard"
-              className="block text-gray-700 hover:text-gray-900 py-2"
+              className="block font-primary text-black hover:text-gray-900 py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Dashboard
             </Link>
             <div className="flex space-x-4 pt-2">
-              <Button variant="outline" size="sm">
-                <Link
-                  href="/auth/signin"
-                  className="w-full h-full flex items-center justify-center"
-                >
-                  Sign In
-                </Link>
-              </Button>
-              <Button variant="default" size="sm">
-                <Link
-                  href="/auth/signin"
-                  className="w-full h-full flex items-center justify-center"
-                >
-                  Sign Up
-                </Link>
-              </Button>
+              {session ? (
+                <>
+                  <span className="text-black font-primary">
+                    Hi, {session.user?.name || "User"}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="text-black"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGoogleSignIn}
+                  >
+                    Sign In
+                  </Button>
+                  <Button variant="default" size="sm" onClick={handleSignUp}>
+                    Sign Up
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

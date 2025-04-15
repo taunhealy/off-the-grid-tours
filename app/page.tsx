@@ -1,11 +1,9 @@
 import Image from "next/image";
 import Hero from "@/app/components/hero";
-import Navbar from "./components/navbar";
 
 export default function Home() {
   return (
     <div className="min-h-screen font-primary">
-      <Navbar />
       <Hero />
 
       <main className="container mx-auto px-4 py-12">

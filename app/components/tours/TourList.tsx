@@ -1,6 +1,6 @@
 "use client";
 
-import { Tour } from "@/app/types/tour";
+import { Tour } from "@/lib/types/tour";
 
 interface TourListProps {
   tours: Tour[] | undefined;
@@ -38,10 +38,10 @@ export default function TourList({
                     tour.difficulty === "EASY"
                       ? "badge-green"
                       : tour.difficulty === "MODERATE"
-                      ? "badge-blue"
-                      : tour.difficulty === "CHALLENGING"
-                      ? "badge-amber"
-                      : "badge-red"
+                        ? "badge-blue"
+                        : tour.difficulty === "CHALLENGING"
+                          ? "badge-amber"
+                          : "badge-red"
                   }`}
                 >
                   {tour.difficulty}

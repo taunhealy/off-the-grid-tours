@@ -8,6 +8,13 @@ Code Style and Structure
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
 - Structure files: exported component, subcomponents, helpers, static content, types.
 
+File Paths
+
+- Use relative paths for imports.
+- Use the app directory for all components, pages, and utilities.
+- Eg. import { Calendar } from "@/app/components/ui/calendar";
+- The lib folder is at root and is used for prisma and zod schemas. (F:\Kea\off-the-grid\lib)
+
 Naming Conventions
 
 - Favor named exports for components.
@@ -32,6 +39,7 @@ UI and Styling
 Performance Optimization
 
 - Minimize 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC).
+- "use client"; not ("use client")
 - Wrap client components in Suspense with fallback.
 - Use dynamic loading for non-critical components.
 - Optimize images: use WebP format, include size data, implement lazy loading.
@@ -44,5 +52,6 @@ Key Conventions
   - Favor server components and Next.js SSR.
   - Use only for Web API access in small components.
   - Avoid for data fetching or state management.
+  - Use Sonner library instad of use-toast for notifications
 
 Follow Next.js docs for Data Fetching, Rendering, and Routing.

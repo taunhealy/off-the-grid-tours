@@ -1,9 +1,13 @@
-import { prisma } from "@/app/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    // Properly await the params in Next.js 15
+    const { id } = await context.params;
 
     const tour = await prisma.tour.findUnique({
       where: { id },
@@ -14,6 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             motorcycle: true,
           },
         },
+        itinerary: true,
       },
     });
 
@@ -25,13 +30,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
   } catch (error) {
     console.error("Error fetching tour:", error);
     return NextResponse.json(
-      { error: "Failed to fetch tour" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
     const data = await request.json();

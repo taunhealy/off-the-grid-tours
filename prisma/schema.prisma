@@ -23,10 +23,10 @@ model User {
   phone             String?
   address           String?
   emergencyContact  String?
-    image             String?   // NextAuth image field
+  image             String?   // NextAuth image field
   drivingLicense    String?   // License number
   licenseExpiry     DateTime?
-  experienceLevel   ExperienceLevel?
+  experienceLevel   RidingDifficulty?
   profileImage      String?   // URL to image
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -43,7 +43,8 @@ enum UserRole {
   ADMIN
 }
 
-enum ExperienceLevel {
+// Keep this enum for both users and motorcycles
+enum RidingDifficulty {
   BEGINNER
   INTERMEDIATE
   ADVANCED
@@ -68,6 +69,12 @@ model Motorcycle {
   updatedAt       DateTime  @updatedAt
   bookings        BookingMotorcycle[]
   tourMotorcycles TourMotorcycle[]
+  brand           String
+  weight          Int       // in kg
+  seatHeight      Int       // in mm
+  imageUrl        String?
+  difficulty      RidingDifficulty
+  isAvailable     Boolean   @default(true)
 }
 
 enum BikeType {
@@ -104,6 +111,7 @@ model Tour {
   schedules       TourSchedule[]
   motorcycles     TourMotorcycle[]
   accommodations  TourAccommodation[]
+  itinerary       TourItinerary[]
 }
 
 enum DifficultyLevel {
@@ -144,8 +152,7 @@ model TourMotorcycle {
   tour          Tour       @relation(fields: [tourId], references: [id], onDelete: Cascade)
   motorcycleId  String
   motorcycle    Motorcycle @relation(fields: [motorcycleId], references: [id])
-  quantity      Int
-  surcharge     Decimal?   @db.Decimal(10, 2)
+  quantity      Int        @default(1)  // How many of this model are available
 }
 
 // Accommodations during tours
@@ -207,7 +214,7 @@ model BookingMotorcycle {
   booking       Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   motorcycleId  String
   motorcycle    Motorcycle @relation(fields: [motorcycleId], references: [id])
-  assignedTo    String?    // Name of rider
+  riderId       String     // Which rider in the booking gets this motorcycle
 }
 
 // Equipment rentals
@@ -309,4 +316,20 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Tour itinerary - daily activities
+model TourItinerary {
+  id          String    @id @default(cuid())
+  tourId      String
+  tour        Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  dayNumber   Int       // Which day of the tour
+  title       String    // E.g., "Day 1: Bangkok to Chiang Mai"
+  description String    @db.Text
+  distance    Int?      // Distance covered in km
+  activities  String[]  // Array of activities
+  meals       String[]  // Which meals are included (breakfast, lunch, dinner)
+  highlights  String[]  // Special highlights of the day
+  overnight   String?   // Where travelers stay overnight
+  images      String[]  // Images for this day
 }
